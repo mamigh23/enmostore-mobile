@@ -1,7 +1,7 @@
 # EnmoStore Existing Backend Audit
 
 **Audit date:** 2026-09-11  
-**Source reviewed:** uploaded PHP website/config/admin source archives  
+**Sources reviewed:** uploaded PHP website/config/admin source archives + `enmostore_yeni.sql` database export  
 **Purpose:** establish factual backend constraints before Codex/mobile implementation
 
 ## Confirmed stack
@@ -10,13 +10,13 @@
 - Session-based website authentication
 - PayTR iframe payment integration
 - Server-rendered website pages
-- Existing TR / EN / DE / JA language files
+- Existing TR / EN / DE / JA language support
 - Existing TRY / EUR product pricing support
 
 ## Confirmed business requirements
 - Android + iOS dedicated mobile app
 - No WebView-only implementation
-- Mobile and web share the same products and orders
+- Mobile and web share the same product catalog and order system
 - Supported app languages: TR, EN, DE, JA
 - Currency rule: Turkey -> TRY, outside Turkey -> EUR
 - Favorites required
@@ -25,151 +25,123 @@
 - PayTR remains the payment provider
 - Mobile client must never connect directly to MySQL
 
-## Existing data/domain model discovered
-Existing code references these core tables/domains:
-- `users`
-- `products`
+## Verified database schema
+The supplied SQL export confirms these tables:
+- `cart`
 - `categories`
+- `coupons`
+- `email_templates`
 - `favorites`
 - `orders`
 - `order_items`
-- `coupons`
 - `preorders`
+- `products`
 - `settings`
 - `slider_slides`
 - `smtp_settings`
-- `email_templates`
+- `users`
 
-The exact production schema still needs either the SQL schema/export or a migration/schema dump before API DTOs are locked.
+### Users
+`users` contains `id`, `first_name`, `last_name`, unique `email`, password hash, phone, address, city, role and timestamps.
+
+There is currently no Google provider/sub/provider-id column. Google sign-in must therefore either link by verified email under a carefully defined account-linking policy or use a dedicated identity table/migration. Do not overload the password field with Google identity data.
+
+### Products
+`products` confirms:
+- TRY: `price`, `sale_price`
+- EUR: `price_eur`, `sale_price_eur`
+- category relation
+- primary image + serialized/text gallery field
+- `sizes` and `colors` stored as varchar fields
+- one aggregate `stock` integer
+- featured/active flags
+- preorder fields
+- sport and SEO fields
+
+Important: the current schema does **not** have per-size/per-color stock rows. Variants are descriptive selections while stock is aggregate at product level unless the backend source contains additional logic. Codex must not invent variant-stock tables without an explicit migration decision.
+
+### Orders
+`orders` confirms a shared order record with nullable `user_id`, customer snapshot fields, address/city/postal code, subtotal, shipping, total, 3-character currency, status, tracking fields, payment method, coupon and discount fields.
+
+`order_items` snapshots product name/image/price/quantity/size/color/total and references the order. This model is suitable for unified web + mobile orders.
+
+### Favorites
+`favorites` has `user_id` + `product_id` with a unique composite key, so the same user cannot favorite the same product twice.
+
+### Cart
+A database `cart` table exists with optional `user_id` or `session_id`, product, quantity, size and color. The reviewed website code also uses PHP-session cart behavior. For mobile, define one authoritative API cart strategy rather than exposing raw session mechanics.
+
+### Settings / secrets
+The SQL export contains PayTR setting keys including merchant ID/key/salt/test-mode. The uploaded export also contains data rows, including production-like application data.
+
+**Security rule:** never commit this SQL dump, credential values, SMTP values, user rows, order rows, password hashes, or other production/customer data to `enmostore-mobile`. Only schema-derived documentation/migrations with secrets and personal data removed may enter GitHub.
 
 ## Existing authentication
-Website authentication currently uses:
-- email + password
-- `password_hash(..., PASSWORD_DEFAULT)` for registration
-- `password_verify(...)` for login
-- PHP session variables such as `user_id`, `user_name`, `user_email`, `user_role`
+Website authentication uses email/password, `password_hash` / `password_verify`, and PHP sessions.
 
 ### Mobile implication
-Do not reuse browser PHP sessions as the primary mobile authentication mechanism. Create a mobile-safe API authentication layer while keeping the existing `users`/order ownership model compatible with the website.
+Create a mobile-safe API authentication layer while preserving compatibility with the existing `users.id` ownership model so web and mobile orders/favorites can belong to the same customer identity where appropriate.
 
-Google sign-in must be implemented server-side: the app obtains a Google identity token, the PHP API verifies it, resolves/creates the user, then issues the app's own authenticated session/token. Never trust Google identity data supplied by the client without server verification.
+Google sign-in must be verified server-side. Recommended schema direction is a dedicated external identity mapping (for example provider + provider subject + user_id) rather than storing Google identifiers in the password column. Any migration must be explicit and documented before implementation.
 
-## Existing products and currency logic
-The site supports:
-- base TRY fields such as `price` / `sale_price`
-- EUR fields such as `price_eur` / `sale_price_eur`
-- TRY and EUR formatting
-- IP-based country detection
-- TR -> TRY
-- non-TR -> EUR
+## Currency
+Products already store independent TRY and EUR prices. Backend must select authoritative currency/prices based on the EnmoStore country rule and return the selected currency explicitly to mobile. The client must never convert prices itself.
 
-The current website implementation stores currency choice in PHP session and uses IP geolocation.
+## Cart / checkout
+Checkout must recalculate authoritative product prices, stock, coupon, shipping and totals on the server. Mobile checkout creates records in the same `orders` and `order_items` tables as web checkout.
 
-### Mobile implication
-Currency must be resolved by the backend/API and returned explicitly with every price/checkout context. The mobile app must not calculate or invent currency/prices locally.
+## PayTR
+Confirmed server-side iframe/token initialization and callback hash verification.
 
-Recommended API response fields include explicit values such as:
-- `currency`: `TRY` or `EUR`
-- `currency_symbol`
-- backend-authoritative numeric prices
+### Critical issue
+Payment initialization builds `merchant_oid` as `ORD{id}X{timestamp}` while the reviewed callback parsing expects an `OR{id}T{timestamp}`-style value. Standardize this format and regression-test success/failure callbacks before mobile payment release.
 
-## Existing cart/checkout
-The website cart is currently PHP-session-based.
+### Currency constraint
+Reviewed PayTR initialization sends `TL` unconditionally. The EnmoStore account/payment configuration must be verified for EUR support; then the backend must map the authoritative order currency to the correct PayTR currency value. Never let the mobile client choose arbitrary payment currency.
 
-Checkout creates:
-1. an `orders` record
-2. related `order_items`
-3. redirects PayTR orders to payment initialization
-
-The current order contains customer/address fields, subtotal, shipping, total, payment method and coupon data.
-
-### Mobile implication
-The mobile app needs API-backed cart/checkout state. Do not depend on a browser session cart. The server must recalculate product price, stock, coupon, shipping and final total during checkout.
-
-## Existing favorites
-Favorites are already associated with:
-- `user_id`
-- `product_id`
-
-There is an existing POST-style favorites toggle flow.
-
-### Mobile implication
-Expose favorites through authenticated JSON API endpoints rather than HTML/session page actions.
-
-## Existing orders
-Website helper functions already retrieve:
-- orders for a user
-- a specific order with `user_id` ownership checking
-- order items
-
-### Mobile implication
-Mobile and web orders can remain unified in the existing `orders` / `order_items` model. The API must enforce ownership on every order read/action.
-
-## Existing PayTR integration
-Confirmed server-side PayTR iframe/token initialization and callback hash verification.
-
-PayTR merchant credentials are server-side settings and must never be included in the mobile app or committed to the mobile GitHub repository.
-
-### Critical issue discovered
-There is currently an order-ID format mismatch between PayTR initialization and PayTR callback parsing:
-- payment initialization builds `merchant_oid` in the form `ORD{id}X{timestamp}`
-- callback currently attempts to parse a form equivalent to `OR{id}T{timestamp}`
-
-This can prevent the callback from resolving the order ID correctly. This must be fixed and regression-tested before mobile payment integration is considered production-ready.
-
-### Additional payment constraint
-The reviewed payment initialization currently sends PayTR currency as `TL` unconditionally. Since EnmoStore requirements include EUR for non-Turkey customers, PayTR currency behavior and merchant-account support must be verified and then made backend-authoritative for TRY/EUR checkout.
-
-## Security findings
-1. Database credentials/config values exist in the uploaded PHP source. Do not copy them into GitHub or mobile code.
-2. PayTR secrets are retrieved server-side and must stay server-side.
-3. Mobile must use HTTPS APIs only in production.
-4. API must validate authorization, prices, stock, discounts, shipping and totals.
-5. API errors must not leak SQL, credentials, stack traces or payment secrets.
-6. Add rate limiting and authentication throttling for mobile auth endpoints.
-7. Add CSRF protection where browser session endpoints remain in use; token-based mobile APIs should use their own authorization model.
-
-## API implementation direction
-Create a versioned PHP JSON API alongside the existing website, for example under `/api/v1/`, without breaking the current web pages.
+## API direction
+Create a versioned PHP JSON API alongside the existing website, e.g. `/api/v1/`, without breaking existing pages.
 
 Required domains:
-- bootstrap/app config
-- auth
-- Google sign-in
-- products
-- categories
-- search
+- app bootstrap/config
+- auth + Google sign-in
+- products/categories/search
 - favorites
 - cart
+- coupon/shipping quote
 - checkout
-- PayTR payment initiation/status
-- orders
+- PayTR initiation/status
+- orders/tracking
 - account/profile
-- shipping/address handling
 - notification device registration
 
-Do not lock request/response DTOs until the remaining schema and business rules are verified.
+## Database/API rules for Codex
+1. Reuse existing `users`, `products`, `categories`, `favorites`, `orders`, `order_items`, `coupons`, `preorders` where compatible.
+2. Never expose SQL credentials or direct DB access to the app.
+3. Never commit the supplied SQL data dump.
+4. Never invent product variant inventory that the schema does not contain.
+5. New tables required for mobile auth/device tokens/cart behavior must be introduced through explicit reviewed migrations.
+6. Preserve web compatibility when adding API/mobile fields.
+7. All prices, stock, discounts, shipping and order totals are server-authoritative.
+8. Every order endpoint enforces user ownership.
+9. Google tokens are verified server-side before account creation/linking.
+10. Payment secrets remain server-side only.
+
+## Remaining decisions before production contract is fully locked
+- exact shipping-price/business rules
+- whether mobile cart persists in existing `cart` table or a revised cart model
+- Google account-linking policy and identity-table migration
+- push provider (recommended to decide during mobile framework initialization) and device-token persistence migration
+- PayTR EUR merchant/account support and exact currency mapping
 
 ## Codex execution order
-Codex must follow this order:
 1. Read `MASTER_LAW.md`.
 2. Read `PROJECT_STATUS.md`.
-3. Read this `BACKEND_AUDIT.md`.
-4. Read `ARCHITECTURE.md`, `API.md`, and `DESIGN_SYSTEM.md`.
-5. Do not invent database columns/endpoints not verified by source/schema.
-6. Build/secure the PHP API layer before wiring production commerce screens.
-7. Fix PayTR merchant OID callback mismatch before payment release.
-8. Verify TRY/EUR PayTR handling.
-9. Initialize the mobile project only after the framework decision is recorded.
-10. Update `PROJECT_STATUS.md` and `CHANGELOG.md` after every meaningful implementation batch.
-
-## Still required from backend source
-To fully lock the API contract, obtain/inspect:
-- SQL schema or database export (structure is enough; no production customer data required)
-- full product/variant/stock model
-- exact shipping rules
-- address model if separate from orders
-- Google sign-in configuration strategy
-- push notification provider/device-token persistence strategy
-
-Never upload real production secrets or customer data for this purpose.
+3. Read this file.
+4. Read `ARCHITECTURE.md`, `API.md`, `DESIGN_SYSTEM.md`.
+5. Build from verified schema; do not invent existing fields/endpoints.
+6. Define migrations for genuinely missing mobile capabilities.
+7. Standardize/fix PayTR merchant OID and verify TRY/EUR behavior.
+8. Initialize the chosen mobile framework after the framework decision is recorded.
+9. Implement API + app phase-by-phase with tests.
+10. Update `PROJECT_STATUS.md` and `CHANGELOG.md` after every meaningful batch.
