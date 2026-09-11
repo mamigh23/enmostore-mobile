@@ -1,40 +1,38 @@
 # PROJECT STATUS
 
 **Project:** EnmoStore Mobile  
-**Status:** Initialization / Documentation Foundation  
-**Current Phase:** Phase 0 — Project Initialization
+**Status:** Phase 0 — Project Initialization  
+**Last Updated:** 2026-09-11
 
 ## Completed
-- [x] GitHub repository connected
+- [x] GitHub repository exists
 - [x] `MASTER_LAW.md` created
-- [x] `CLAUDE.md` created
-- [x] Project documentation structure started
+- [x] GitHub write access verified
+- [x] `CLAUDE.md` created/updated
+- [x] Project documentation foundation started
 
 ## In Progress
-- [ ] Define mobile technology stack
+- [ ] Inspect repository contents
 - [ ] Inspect existing EnmoStore backend/API
-- [ ] Initialize mobile application
-- [ ] Create design system
-- [ ] Define navigation architecture
-- [ ] Connect mobile app to backend/API
+- [ ] Decide mobile technology stack
+- [ ] Define architecture
+- [ ] Define design system
 
-## Next Steps
-1. Inspect repository and existing EnmoStore systems.
-2. Decide the mobile technology stack based on project requirements.
-3. Document the architecture before implementation.
-4. Initialize the mobile application.
-5. Build the mobile design system.
+## Next
+1. Inspect repository contents.
+2. Inspect the existing EnmoStore backend/API.
+3. Decide the mobile framework/technology stack.
+4. Create the architecture baseline.
+5. Create the mobile design system.
+6. Initialize the mobile application.
+7. Build navigation and core screens.
+8. Integrate the backend/API.
 
-## Important Constraints
-- Mobile app must not be a WebView.
-- Mobile UI must not be a 1:1 copy of the website.
-- App must not connect directly to MySQL.
-- Real purchases are required.
-- Production secrets must never be committed.
+## Known Issues / Decisions
+- Mobile framework has not yet been selected.
+- Existing backend/API contract must be inspected before implementation.
+- Production payment provider/integration must be verified before checkout implementation.
+- Final brand tokens must be verified from existing EnmoStore assets/site before being locked into the mobile design system.
 
-## Known Issues
-- Technical stack has not yet been selected.
-- Existing backend/API contract has not yet been documented.
-
-## Last Updated
-2026-09-11
+## Current Phase
+**Phase 0 — Project Initialization**
