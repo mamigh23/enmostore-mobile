@@ -1,11 +1,21 @@
 # EnmoStore Mobile — Design System
 
-**Status:** Initial draft
+## Status
+Design system definition phase.
 
-## Design direction
-The app must feel modern, premium, young, dynamic, visual and fast while remaining easy to use.
+## Design goals
+- Premium
+- Modern
+- Young
+- Dynamic
+- Minimal
+- Fast
+- Mobile-first
+- Brand-consistent
+- Accessible
 
-The mobile app must preserve EnmoStore brand identity but must NOT reproduce the website 1:1.
+## Brand rule
+Preserve EnmoStore brand identity, logo, existing visual language and product identity, but do not reproduce the website 1:1.
 
 ## Mobile-first principles
 - Design for touch first.
@@ -13,26 +23,28 @@ The mobile app must preserve EnmoStore brand identity but must NOT reproduce the
 - Keep primary actions obvious.
 - Respect platform navigation patterns.
 - Avoid unnecessary visual clutter.
-- Use animation to communicate state and interaction.
 
-## Design tokens
-The final implementation should centralize:
-- Brand colors
+## Tokens
+The final implementation must centralize:
+- Colors
 - Typography
 - Font sizes and weights
 - Spacing
-- Corner radius
-- Shadows/elevation
+- Border radius
+- Elevation/shadows
 - Icon sizing
 - Component states
+- Motion/animation timing
 
-Do not scatter arbitrary values throughout the application.
+Do not invent final brand colors until they are verified from existing EnmoStore assets/site/project.
 
-## Components to define
+## Components
+Planned:
 - App bar / header
 - Bottom navigation
-- Product card
+- Product cards
 - Product gallery
+- Product details
 - Price block
 - Variant selector
 - Quantity selector
@@ -42,24 +54,23 @@ Do not scatter arbitrary values throughout the application.
 - Add-to-cart interaction
 - Cart item
 - Checkout fields
+- Address cards
+- Order cards
 - Buttons
 - Inputs
 - Chips / filters
 - Bottom sheets
 - Dialogs
-- Skeleton loaders
+- Skeleton/loading states
 - Empty states
 - Error states
 - Toast/snackbar feedback
 
-## Animation principles
-Animations should be smooth, short, purposeful and performance-friendly. Avoid animation overload and decorative motion that slows shopping tasks.
+## Motion
+Animations must be smooth, short, purposeful and performance-friendly. Avoid excessive motion and decorative animation that slows shopping tasks.
 
 ## Responsive behavior
-Layouts must adapt to different Android and iOS screen sizes without clipping, overflow or unusable touch targets.
+Design for small and large Android phones and iPhones. Respect safe areas, dynamic text sizing and platform conventions. No clipping, overflow or unusable touch targets.
 
 ## Accessibility
 Maintain adequate contrast, readable text, scalable typography, accessible controls and screen-reader labels.
-
-## Current state
-Exact production tokens should be derived from the existing EnmoStore brand/assets after inspection. Do not invent final brand values prematurely.
