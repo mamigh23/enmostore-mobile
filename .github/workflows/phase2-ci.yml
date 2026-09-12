@@ -1,0 +1,49 @@
+name: Phase 2 CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [work, phase2-hardening]
+
+jobs:
+  js-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.19.4
+          cache: npm
+      - run: npm install
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test -- --runInBand
+      - run: npm run format:check
+
+  android-debug:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.19.4
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - run: npm install
+      - name: Verify Gradle wrapper source
+        run: test "$(git hash-object android/gradle/wrapper/gradle-wrapper.jar)" = "1b33c55baabb587c669f562ae36f953de2481846"
+      - run: cd android && ./gradlew assembleDebug
+
+  ios-static:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: plutil -lint ios/EnmoStore/Info.plist
+      - run: plutil -lint ios/EnmoStore/PrivacyInfo.xcprivacy
+      - run: plutil -lint ios/EnmoStore.xcodeproj/project.pbxproj
+      - run: xmllint --noout ios/EnmoStore/LaunchScreen.storyboard
+      - run: xmllint --noout ios/EnmoStore.xcodeproj/xcshareddata/xcschemes/EnmoStore.xcscheme
