@@ -14,7 +14,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20.19.4
-      - run: npm install
+          cache: npm
+      - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test -- --runInBand
@@ -27,11 +28,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20.19.4
+          cache: npm
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-      - run: npm install
+      - run: npm ci
       - name: Verify Gradle wrapper source
         run: test "$(git hash-object android/gradle/wrapper/gradle-wrapper.jar)" = "1b33c55baabb587c669f562ae36f953de2481846"
       - run: cd android && ./gradlew assembleDebug
