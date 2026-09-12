@@ -77,6 +77,47 @@ jobs:
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon
 
+  ios-build:
+    name: iOS simulator build
+    runs-on: macos-latest
+    timeout-minutes: 35
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20.19.4'
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Validate iOS project files
+        run: |
+          plutil -lint ios/EnmoStore/Info.plist
+          plutil -lint ios/EnmoStore/PrivacyInfo.xcprivacy
+          plutil -lint ios/EnmoStoreMobile.xcodeproj/project.pbxproj
+          test -f ios/EnmoStoreMobile.xcodeproj/xcshareddata/xcschemes/EnmoStoreMobile.xcscheme
+          test -f ios/EnmoStore/LaunchScreen.storyboard
+
+      - name: Install CocoaPods dependencies
+        working-directory: ios
+        run: pod install
+
+      - name: Build iOS simulator app
+        working-directory: ios
+        run: |
+          xcodebuild \
+            -workspace EnmoStoreMobile.xcworkspace \
+            -scheme EnmoStoreMobile \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
   repository-safety:
     name: Repository safety checks
     runs-on: ubuntu-latest
