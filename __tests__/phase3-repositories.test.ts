@@ -17,9 +17,8 @@ const listProduct = {
 function requester(payload: unknown): {
   request: jest.MockedFunction<ApiRequester>;
 } {
-  return {
-    request: jest.fn(async () => payload) as jest.MockedFunction<ApiRequester>,
-  };
+  const request = jest.fn(async (_path: string, _init?: RequestInit) => payload);
+  return { request: request as unknown as jest.MockedFunction<ApiRequester> };
 }
 
 describe('Phase 3 repositories', () => {
@@ -148,11 +147,7 @@ describe('Phase 3 repositories', () => {
       perPage: 10,
     });
     const [path, init] = request.mock.calls[0];
-    expect(path).toContain('/api/v1/search?');
-    const params = new URLSearchParams(path.split('?')[1]);
-    expect(params.get('q')).toBe('rose & oud');
-    expect(params.get('page')).toBe('2');
-    expect(params.get('perPage')).toBe('10');
+    expect(path).toBe('/api/v1/search?q=rose%20%26%20oud&page=2&perPage=10');
     expect(init).toEqual({ method: 'GET' });
   });
 
