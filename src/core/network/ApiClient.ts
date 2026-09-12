@@ -1,6 +1,6 @@
-import {environment} from '../../config/environment';
-import {ApiError, mapHttpStatusToCode} from './ApiError';
-import {tokenStore} from '../storage/tokenStore';
+import { environment } from '../../config/environment';
+import { ApiError, mapHttpStatusToCode } from './ApiError';
+import { tokenStore } from '../storage/tokenStore';
 
 const TIMEOUT_MS = 15000;
 
@@ -26,13 +26,20 @@ async function parseJsonSafely(response: Response): Promise<unknown | null> {
     return JSON.parse(text);
   } catch {
     if (response.ok) {
-      throw new ApiError(response.status, 'Invalid JSON response', 'invalid_response');
+      throw new ApiError(
+        response.status,
+        'Invalid JSON response',
+        'invalid_response',
+      );
     }
     return null;
   }
 }
 
-export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
+export async function apiRequest<T>(
+  path: string,
+  init: RequestInit = {},
+): Promise<T> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
@@ -40,8 +47,8 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
     const token = await tokenStore.getAccessToken();
     const headers: Record<string, string> = {
       Accept: 'application/json',
-      ...(token ? {Authorization: `Bearer ${token}`} : {}),
-      ...(hasRequestBody(init) ? {'Content-Type': 'application/json'} : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(hasRequestBody(init) ? { 'Content-Type': 'application/json' } : {}),
       ...(init.headers as Record<string, string> | undefined),
     };
 
@@ -51,9 +58,10 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
       headers,
     });
 
-    const payload = (await parseJsonSafely(response)) as
-      | {message?: string; code?: string}
-      | null;
+    const payload = (await parseJsonSafely(response)) as {
+      message?: string;
+      code?: string;
+    } | null;
 
     if (!response.ok) {
       if (response.status === 401) {
@@ -81,7 +89,11 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
       throw new ApiError(0, 'Request timed out', 'timeout');
     }
 
-    throw new ApiError(0, error instanceof Error ? error.message : 'Network request failed', 'network');
+    throw new ApiError(
+      0,
+      error instanceof Error ? error.message : 'Network request failed',
+      'network',
+    );
   } finally {
     clearTimeout(timeout);
   }

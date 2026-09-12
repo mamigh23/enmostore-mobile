@@ -1,1 +1,1 @@
-export type Session = {accessToken:string; expiresAt:string};
+export type Session = { accessToken: string; expiresAt: string };

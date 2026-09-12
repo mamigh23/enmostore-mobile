@@ -5,9 +5,9 @@ jest.mock('../src/core/storage/tokenStore', () => ({
   },
 }));
 
-import {apiRequest} from '../src/core/network/ApiClient';
-import {ApiError} from '../src/core/network/ApiError';
-import {tokenStore} from '../src/core/storage/tokenStore';
+import { apiRequest } from '../src/core/network/ApiClient';
+import { ApiError } from '../src/core/network/ApiError';
+import { tokenStore } from '../src/core/storage/tokenStore';
 
 const mockedTokenStore = tokenStore as jest.Mocked<typeof tokenStore>;
 const mockFetch = jest.fn();
@@ -18,7 +18,11 @@ type MockResponseOptions = {
   body?: string;
 };
 
-function mockResponse({status = 200, ok = true, body = ''}: MockResponseOptions = {}): Response {
+function mockResponse({
+  status = 200,
+  ok = true,
+  body = '',
+}: MockResponseOptions = {}): Response {
   return {
     status,
     ok,
@@ -31,11 +35,12 @@ describe('apiRequest', () => {
     jest.clearAllMocks();
     mockedTokenStore.getAccessToken.mockResolvedValue(null);
     mockedTokenStore.clear.mockResolvedValue(undefined);
-    (globalThis as {fetch?: typeof fetch}).fetch = mockFetch as unknown as typeof fetch;
+    (globalThis as { fetch?: typeof fetch }).fetch =
+      mockFetch as unknown as typeof fetch;
   });
 
   it('normalizes URL slashes', async () => {
-    mockFetch.mockResolvedValue(mockResponse({body: '{"ok":true}'}));
+    mockFetch.mockResolvedValue(mockResponse({ body: '{"ok":true}' }));
 
     await apiRequest('/products');
 
@@ -46,26 +51,32 @@ describe('apiRequest', () => {
   });
 
   it('returns null for successful empty responses', async () => {
-    mockFetch.mockResolvedValue(mockResponse({status: 204, body: ''}));
+    mockFetch.mockResolvedValue(mockResponse({ status: 204, body: '' }));
 
     await expect(apiRequest('/empty')).resolves.toBeNull();
   });
 
   it('adds Content-Type only when a request body exists', async () => {
-    mockFetch.mockResolvedValue(mockResponse({body: '{}'}));
+    mockFetch.mockResolvedValue(mockResponse({ body: '{}' }));
 
     await apiRequest('/products');
     const firstInit = mockFetch.mock.calls[0][1] as RequestInit;
     expect(firstInit.headers).not.toHaveProperty('Content-Type');
 
-    await apiRequest('/products', {method: 'POST', body: JSON.stringify({name: 'test'})});
+    await apiRequest('/products', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'test' }),
+    });
     const secondInit = mockFetch.mock.calls[1][1] as RequestInit;
-    expect(secondInit.headers).toHaveProperty('Content-Type', 'application/json');
+    expect(secondInit.headers).toHaveProperty(
+      'Content-Type',
+      'application/json',
+    );
   });
 
   it('adds a bearer token when secure storage returns one', async () => {
     mockedTokenStore.getAccessToken.mockResolvedValue('test-token');
-    mockFetch.mockResolvedValue(mockResponse({body: '{}'}));
+    mockFetch.mockResolvedValue(mockResponse({ body: '{}' }));
 
     await apiRequest('/account');
 
@@ -74,7 +85,7 @@ describe('apiRequest', () => {
   });
 
   it('normalizes malformed successful JSON to ApiError', async () => {
-    mockFetch.mockResolvedValue(mockResponse({body: 'not-json'}));
+    mockFetch.mockResolvedValue(mockResponse({ body: 'not-json' }));
 
     await expect(apiRequest('/broken')).rejects.toMatchObject({
       status: 200,
@@ -84,9 +95,15 @@ describe('apiRequest', () => {
   });
 
   it('preserves an authoritative 401 even when token cleanup fails', async () => {
-    mockedTokenStore.clear.mockRejectedValue(new Error('secure storage unavailable'));
+    mockedTokenStore.clear.mockRejectedValue(
+      new Error('secure storage unavailable'),
+    );
     mockFetch.mockResolvedValue(
-      mockResponse({status: 401, ok: false, body: '{"message":"Session expired"}'}),
+      mockResponse({
+        status: 401,
+        ok: false,
+        body: '{"message":"Session expired"}',
+      }),
     );
 
     try {
