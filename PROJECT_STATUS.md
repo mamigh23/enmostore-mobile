@@ -1,13 +1,14 @@
 # PROJECT STATUS
 
 **Project:** EnmoStore Mobile  
-**Status:** Phase 2 — Final Merge Validation  
+**Status:** Phase 3 — API/Auth/Catalog Foundation  
 **Last Updated:** 2026-09-12
 
 ## Completed
 - [x] GitHub repository/documentation foundation
 - [x] Existing PHP/MySQL backend and SQL schema audited
-- [x] React Native 0.81.4 + TypeScript selected for Android/iOS
+- [x] Phase 2 mobile foundation merged to `main`
+- [x] React Native 0.81.4 + React 19.1.0 + TypeScript selected and validated for Android/iOS
 - [x] Six-tab mobile shell created: Home, Explore, Search, Favorites, Cart, Account
 - [x] TR / EN / DE / JA localization foundation created
 - [x] Environment-aware API configuration created
@@ -15,27 +16,24 @@
 - [x] Access-token storage uses `react-native-keychain`
 - [x] HTTP 401 handling preserves the authoritative API error even if secure-token cleanup fails
 - [x] API-client regression tests added
-- [x] Android native project/wrapper scaffolding completed and validated
-- [x] Android `assembleDebug` passes on GitHub Actions
-- [x] iOS Xcode project/shared scheme scaffolding completed and validated
-- [x] CocoaPods installation passes on GitHub Actions
-- [x] iOS simulator build passes on `macos-15` with Xcode 16.4
-- [x] iOS `AppDelegate.swift` restored to valid React Native Swift conditional-compilation syntax
-- [x] GitHub Actions Phase 2 CI validates JavaScript quality, Android, iOS and repository safety
-- [x] CI confirms npm dependency installation, TypeScript, ESLint and unit tests pass
-- [x] CI safety checks confirm no committed signing/private-key material, direct DB access or WebView wrapper implementation
-- [x] Prettier baseline is clean on CI and formatting has been promoted to a blocking gate
+- [x] Android native project/wrapper scaffolding validated with `assembleDebug`
+- [x] iOS Xcode project/shared scheme validated with CocoaPods and simulator build on `macos-15`
+- [x] Blocking CI gates established for TypeScript, ESLint, Jest, Prettier, Android, iOS and repository safety
+- [x] Phase 2 PR #1 merged to `main` as squash commit `e41d10630a9badaa8d675258a018aaf9ce01a166`
+- [x] `work` reset to the merged `main` baseline before Phase 3
+- [x] Architecture documentation updated to the confirmed React Native mobile/API boundary
 
-## In Progress
-- [ ] Run final CI on the current `work` head after promoting formatting to a blocking gate and refreshing status documentation
-- [ ] Perform final PR diff/mergeability review
-- [ ] Merge Phase 2 only after the current head is fully green
-- [ ] Lock the mobile-safe PHP JSON API contract for Phase 3
-- [ ] Define token-based auth + Google identity linking migration
-- [ ] Define API cart persistence strategy
-- [ ] Define push notification architecture/device-token migration
-- [ ] Verify exact shipping rules
-- [ ] Verify PayTR EUR merchant/account support
+## Phase 3 In Progress
+- [ ] Lock the first mobile-safe JSON API contract batch: bootstrap, products, categories and search
+- [ ] Add stable mobile domain/API types without mirroring raw MySQL rows
+- [ ] Add repository interfaces/implementations that use the existing centralized `ApiClient`
+- [ ] Add regression tests for API envelope, pagination and catalog mapping behavior
+- [ ] Define token-based mobile auth persistence/migration on the PHP backend
+- [ ] Define Google identity linking migration and server verification flow
+- [ ] Define mobile cart persistence strategy
+- [ ] Define push notification device-token persistence/provider
+- [ ] Verify exact shipping rules/address persistence
+- [ ] Verify PayTR EUR merchant/account behavior and repair backend payment blockers before checkout release
 
 ## Critical Findings / Release Blockers
 - PayTR `merchant_oid` initialization/callback parsing formats are inconsistent and must be standardized/tested before checkout release.
@@ -43,8 +41,8 @@
 - SQL export contains PayTR setting values and application/customer data. It must never be committed to the mobile repository.
 - `products` has TRY/EUR price fields and aggregate stock, but no per-size/per-color inventory table. Do not invent variant inventory without an explicit migration.
 - `users` has no Google provider identity columns/table. Google sign-in requires a deliberate server-side identity-linking design/migration.
-- Mobile and web orders will use the same `orders` / `order_items` records.
-- These backend/payment findings are release blockers for later product phases; they do not invalidate the now-green Phase 2 native foundation.
+- Mobile/web orders must continue sharing the existing `orders` / `order_items` records.
+- The mobile repository does not contain the reviewed backend PHP source; do not claim backend API/payment fixes are complete here.
 
 ## Confirmed Product Decisions
 - Android + iOS dedicated app; no WebView-only implementation
@@ -57,28 +55,26 @@
 - Payment: PayTR
 - Mobile never connects directly to MySQL
 
-## Latest Proven CI Baseline
-Validated on GitHub Actions before the final formatting-gate promotion:
+## Proven Phase 2 CI Baseline
 - npm install: PASS
 - TypeScript: PASS
 - ESLint: PASS
 - Jest: PASS — 3 suites / 8 tests
-- Prettier formatting check: PASS
+- Prettier formatting check: PASS and blocking
 - Repository safety checks: PASS
 - Android `assembleDebug`: PASS
 - iOS project/plist/scheme validation: PASS
 - CocoaPods install: PASS
-- iOS simulator build: PASS on `macos-15` / Xcode 16.4
+- iOS simulator build: PASS on `macos-15`
 
-The current head must repeat these checks successfully before merge.
+These gates remain mandatory for Phase 3.
 
 ## Next Execution Batch
-1. Let the final Phase 2 CI run complete on the current `work` head with formatting blocking.
-2. If any job fails, diagnose the exact log and fix only the proven issue.
-3. Re-check PR #1 diff, mergeability and scope.
-4. Mark Phase 2 READY FOR MERGE only when all current-head checks are green.
-5. Merge Phase 2 before beginning Phase 3 product/backend implementation.
-6. Start Phase 3 with the mobile-safe PHP JSON API/auth/catalog foundation; do not bypass the documented PayTR and schema blockers.
+1. Lock a minimal, backend-safe contract for bootstrap/catalog/search without fabricating schema fields.
+2. Implement mobile domain/API/repository layers against that contract only; no UI feature expansion yet.
+3. Add unit tests for decoding/mapping/error behavior.
+4. Run full CI and review the resulting Phase 3 diff before opening the next PR.
+5. In parallel, prepare the required PHP backend migrations/contracts for mobile auth, Google linking and token persistence using the audited backend source outside this mobile repository.
 
 ## Current Phase
-**Phase 2 — Final Merge Validation**
+**Phase 3 — API/Auth/Catalog Foundation**
