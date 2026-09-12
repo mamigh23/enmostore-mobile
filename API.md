@@ -1,209 +1,295 @@
 # EnmoStore Mobile — API
 
 ## Status
-Backend discovery completed for the uploaded PHP config/admin source. API contract design can now start, but final DTOs must wait for the SQL schema/structure and remaining business-rule verification.
+
+Phase 3 contract baseline is active for the first read-only mobile API batch. These are target JSON contracts for implementation; they are not proof that the PHP endpoints already exist.
 
 ## Core rule
-The mobile app communicates only through secure JSON APIs. It never connects directly to MySQL and never receives payment/database secrets.
 
-## Confirmed existing backend behavior
+The mobile app communicates only through secure, versioned JSON APIs. It never connects directly to MySQL and never receives payment/database secrets.
+
+## Confirmed backend facts
+
 - PHP + MySQLi backend
 - MySQL database
-- Session-based website authentication
-- Session-based website cart
-- Existing `users`, `products`, `categories`, `favorites`, `orders`, `order_items`, `coupons`, `preorders`, `settings` domains
-- Existing PayTR iframe/token integration
-- Existing PayTR server callback/hash verification
-- Existing TR / EN / DE / JA language support
-- Existing TRY / EUR product price support
+- session-based website authentication and cart
+- existing `users`, `products`, `categories`, `favorites`, `orders`, `order_items`, `coupons`, `preorders`, `settings`
+- existing PayTR integration/callback handling
+- TR / EN / DE / JA support
+- TRY / EUR product pricing
 - Turkey -> TRY, non-Turkey -> EUR website currency rule
-- Web and mobile must share products and orders
+- web and mobile must share products and orders
 
-See `BACKEND_AUDIT.md` for the detailed source audit and known issues.
+See `BACKEND_AUDIT.md` for source/schema findings and known blockers.
 
 ## API principles
-- Versioned (`/api/v1/...`)
+
+- Base family: `/api/v1/...`
 - JSON request/response contract
-- Authenticated where required
-- Server-authoritative prices, stock, discounts, shipping, currency, totals and order state
-- Consistent error envelope
+- backend-authoritative price, currency, stock, discounts, shipping, totals and order/payment state
+- safe stable error envelope
 - HTTPS in production
-- No SQL/stack-trace/secret leakage
-- Mobile-safe token/session model separate from browser PHP session mechanics
-- Backward-compatible with the existing website where practical
+- mobile token/session model separate from browser PHP sessions
+- DTOs are API contracts, not raw database rows
+- no guessed tables/columns/variant inventory
 
-## Required API domains
+## Locked response envelope
 
-### App/bootstrap
-Returns backend-authoritative app configuration needed at startup, such as supported languages/currencies and safe public configuration.
+Successful single-resource response:
 
-### Authentication
+```json
+{
+  "data": {}
+}
+```
+
+Successful list response:
+
+```json
+{
+  "data": [],
+  "meta": {
+    "page": 1,
+    "perPage": 20,
+    "total": 0,
+    "totalPages": 0
+  }
+}
+```
+
+Error response:
+
+```json
+{
+  "error": {
+    "code": "stable_machine_code",
+    "message": "Safe human-readable message",
+    "fields": {}
+  }
+}
+```
+
+Rules:
+- `fields` is optional and only for safe validation details.
+- Never expose SQL, stack traces, filesystem paths or secrets.
+- HTTP status remains authoritative; the envelope does not replace correct HTTP status codes.
+
+## Locked common value objects
+
+### Money
+
+```json
+{
+  "amount": 1299.9,
+  "currency": "TRY"
+}
+```
+
+Rules:
+- `currency` is explicit ISO-style code used by the backend contract (`TRY` / `EUR` for the current business rules).
+- Mobile never chooses between raw TRY/EUR database columns.
+- Client does not recalculate authoritative commerce totals.
+
+### Pagination meta
+
+```json
+{
+  "page": 1,
+  "perPage": 20,
+  "total": 120,
+  "totalPages": 6
+}
+```
+
+All values are non-negative integers; `page` and `perPage` are positive for paginated responses.
+
+## Phase 3 Batch A — locked read contracts
+
+### `GET /api/v1/bootstrap`
+
+Purpose: safe startup configuration.
+
+Target response data:
+
+```json
+{
+  "supportedLocales": ["tr", "en", "de", "ja"],
+  "currency": "TRY"
+}
+```
+
+Notes:
+- Backend determines the effective currency; mobile does not infer production pricing rules independently.
+- Do not expose private settings/credentials from the existing `settings` domain.
+
+### `GET /api/v1/products`
+
+Query planning:
+- `page`
+- `perPage`
+- optional category/filter/sort parameters only after backend implementation confirms exact supported values
+
+Target product-list item:
+
+```json
+{
+  "id": 123,
+  "name": "Product name",
+  "price": {
+    "amount": 1299.9,
+    "currency": "TRY"
+  },
+  "imageUrl": "https://...",
+  "inStock": true
+}
+```
+
+Locked semantics:
+- `id` is the server product identifier.
+- `price` is backend-authoritative.
+- `imageUrl` may be `null` when no safe image exists.
+- `inStock` is backend-derived and does not expose raw inventory internals.
+
+Do not add guessed SKU/variant-stock fields. The audited schema does not have normalized per-size/per-color inventory.
+
+### `GET /api/v1/products/{id}`
+
+Target detail extends the list item with safe display data:
+
+```json
+{
+  "id": 123,
+  "name": "Product name",
+  "description": "Product description",
+  "price": {
+    "amount": 1299.9,
+    "currency": "TRY"
+  },
+  "images": ["https://..."],
+  "inStock": true,
+  "sizes": [],
+  "colors": []
+}
+```
+
+Rules:
+- `sizes` / `colors` represent product-level selectable/display values only when the backend can derive them from verified existing data.
+- They must not imply per-variant stock unless a real backend migration is implemented later.
+
+### `GET /api/v1/categories`
+
+Target category item:
+
+```json
+{
+  "id": 10,
+  "name": "Category name",
+  "parentId": null,
+  "imageUrl": null
+}
+```
+
+`parentId` may be `null` for root categories.
+
+### `GET /api/v1/search?q=...`
+
+Returns the same paginated product-list item contract as `/products`.
+
+Rules:
+- Query must be validated server-side.
+- Search implementation may reuse existing product name/description logic, but mobile receives normalized JSON only.
+- Empty/invalid query behavior must be explicit in backend implementation/tests.
+
+## Authentication — contract planning, not yet locked
+
 Required capabilities:
 - email/password login
 - registration
 - logout/revoke
-- current user/profile
+- current profile
 - Google sign-in
 
-Existing website password hashing uses PHP `password_hash` / `password_verify` and can remain compatible with existing user records.
-
-Google sign-in rule:
-1. mobile obtains Google identity token
-2. PHP backend verifies token with Google
-3. backend resolves/creates the EnmoStore user
+Google rule:
+1. app obtains Google identity token
+2. PHP backend verifies it with Google
+3. backend resolves/creates/links the EnmoStore user
 4. backend issues its own mobile authorization token/session
 
 Never trust client-supplied Google profile claims without server verification.
 
-### Products
-Required capabilities:
-- product list
-- product detail
-- featured products
-- related products
-- stock/availability
-- variant/size information once schema is verified
+The audited `users` schema has no Google identity fields and no mobile token/session persistence, so exact auth DTOs and migrations must be designed against the backend before locking them here.
 
-Prices returned by the API must include explicit currency and numeric amount. The app must not select `price` vs `price_eur` by itself.
+## Favorites
 
-### Categories
-- parent categories
-- child categories
-- category product lists
+Existing favorites are user/product based. Planned capabilities:
+- list
+- add
+- remove
 
-### Search
-Existing backend searches product name/description. Mobile API should expose normalized paginated JSON search.
+Exact routes/auth envelope will be locked with the mobile auth contract.
 
-### Favorites
-Existing favorites are user/product based. Required API:
-- list favorites
-- add favorite
-- remove favorite
-- optional idempotent toggle only if useful
+## Cart
 
-### Cart
-Existing website cart is PHP-session-based and must not be reused as the mobile architecture.
+The website PHP-session cart must not be reused as the mobile architecture.
 
-Mobile cart API/server contract must:
-- identify products by server IDs
-- validate quantity/variant
+Mobile cart API must:
+- identify products by server ID
+- validate quantity/selectable values
 - re-read current price/stock server-side
-- calculate subtotal server-side
-- apply coupons server-side
-- return current currency explicitly
+- calculate subtotal/discounts server-side
+- return explicit currency
 
-Exact persistence strategy will be locked after account/cart schema decisions.
+Persistence strategy remains pending backend design.
 
-### Checkout
-Server must validate/recalculate:
-- product prices
+## Checkout / orders
+
+Server must revalidate:
+- product price
 - stock
 - coupon
 - shipping
 - currency
-- subtotal
-- total
+- subtotal/total
 - address/customer inputs
 
-Checkout must create the shared existing `orders` / `order_items` records so web and mobile order history remain unified.
+Checkout must create the shared existing `orders` / `order_items` records so web/mobile history remains unified.
 
-### Payments / PayTR
-Payment credentials remain server-only.
+Every order read/action must enforce user ownership server-side.
 
-Required capabilities:
-- initialize PayTR payment for an owned pending order
-- return only safe client payment/session information
-- process PayTR server callback
-- expose backend-authoritative payment/order status
+## PayTR
 
-Known backend issues that must be resolved before release:
-1. payment initialization currently generates `merchant_oid` as `ORD{id}X{timestamp}` while callback parsing expects a different `OR{id}T{timestamp}`-style pattern
-2. reviewed PayTR initialization currently sets currency to `TL` unconditionally; TRY/EUR behavior must be verified and implemented correctly for international checkout
+Payment credentials remain server-only. The PayTR callback/backend order state is authoritative; client success screens are not.
 
-The PayTR callback, not the client success screen, is authoritative for payment completion.
+Known release blockers:
+1. reviewed payment initialization generates `merchant_oid` as `ORD{id}X{timestamp}` while callback parsing expects a different `OR{id}T...` pattern
+2. reviewed initialization sends `TL` unconditionally; TRY/EUR behavior must be verified/implemented correctly before international checkout release
 
-### Orders
-Existing backend already has ownership-aware order helper logic.
+Do not claim these backend issues are fixed from changes in the mobile repository.
 
-Required capabilities:
-- list current user's orders
-- order detail
-- order items
-- status/tracking data where available
+## Notifications / addresses / shipping
 
-Every order lookup/action must enforce user ownership server-side.
+Still pending backend decisions:
+- device-token persistence/provider
+- address persistence model
+- exact shipping rules/methods/costs
 
-### Account/profile
-Required capabilities:
-- current profile
-- update safe profile fields
-- password/account actions as supported
-- account deletion flow as required by store policy/project law
-
-### Shipping / addresses
-Exact API contract is pending verification of shipping rules and whether addresses are stored independently or only copied into orders.
-
-### Notifications
-Required capabilities:
-- register/update mobile device push token
-- unregister token on logout/device changes
-- support order-status notifications
-- support campaign/announcement notifications according to user permissions/preferences
-
-Provider and persistence strategy are still to be selected.
-
-## Proposed route families
-These are route families for implementation planning, not proof that endpoints already exist:
-- `/api/v1/bootstrap`
-- `/api/v1/auth/*`
-- `/api/v1/products/*`
-- `/api/v1/categories/*`
-- `/api/v1/search`
-- `/api/v1/favorites/*`
-- `/api/v1/cart/*`
-- `/api/v1/checkout/*`
-- `/api/v1/orders/*`
-- `/api/v1/payments/paytr/*`
-- `/api/v1/account/*`
-- `/api/v1/notifications/devices/*`
-
-Do not implement guessed columns/request fields. Verify schema/business rules first.
-
-## Response rules
-Use a consistent JSON envelope. Exact shape will be locked before implementation.
-
-Errors should contain:
-- stable machine-readable error code
-- safe human-readable message or localization key
-- optional field validation details
-
-Never include:
-- raw SQL
-- database credentials
-- PayTR merchant key/salt
-- PHP stack traces in production
-- internal filesystem paths
+Do not fabricate these contracts yet.
 
 ## Security baseline
+
 - HTTPS only in production
-- strong mobile auth tokens with expiration/revocation strategy
-- authorization checks on every user-owned resource
+- revocable/expiring mobile auth tokens
+- authorization on every user-owned resource
 - rate limiting/auth throttling
 - strict input validation
 - prepared statements
-- server-side total calculations
-- payment callback hash verification
-- secrets from environment/secure server config, never mobile repo
-- CSRF protection for remaining browser session POST actions
+- server-side commerce calculations
+- PayTR callback hash verification
+- secrets from secure server environment/config only
+- remaining browser session POST actions retain appropriate CSRF protection
 
-## Remaining blockers before locking contract
-- SQL schema/structure export
-- product variant/size/stock schema
-- shipping rules
-- address persistence model
-- PayTR TRY/EUR merchant/account behavior
-- Google sign-in backend configuration
-- push provider and device-token persistence
+## Codex implementation rule
 
-## Codex rule
-Before implementing an API endpoint, Codex must read `MASTER_LAW.md`, `PROJECT_STATUS.md`, `BACKEND_AUDIT.md`, and this file. It must inspect the relevant backend/schema and must not fabricate tables, columns, endpoints or successful tests.
+Before implementing mobile or backend API code, Codex must read `MASTER_LAW.md`, `PROJECT_STATUS.md`, `BACKEND_AUDIT.md`, `ARCHITECTURE.md`, and this file.
+
+For Phase 3 Batch A, Codex may implement mobile types/repositories/tests only for the locked bootstrap/products/categories/search contracts above. It must not fabricate backend endpoint existence, add guessed database fields, implement PayTR, invent variant stock, or claim integration tests against an unavailable backend.
