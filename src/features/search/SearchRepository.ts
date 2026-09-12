@@ -5,7 +5,7 @@ import type {
   PaginationParams,
 } from '../../core/network/contracts';
 import {
-  buildPaginationQuery,
+  buildQueryString,
   mapPaginatedEnvelope,
 } from '../../core/network/validation';
 import { ApiError } from '../../core/network/ApiError';
@@ -29,12 +29,14 @@ export class SearchRepository {
       throw new ApiError(0, 'Search query is required', 'validation');
     }
 
-    const query = buildPaginationQuery(params);
-    query.set('q', searchTerm);
-    const payload = await this.request<unknown>(
-      `/api/v1/search?${query.toString()}`,
-      { method: 'GET' },
-    );
+    const query = buildQueryString([
+      ['q', searchTerm],
+      ['page', params?.page],
+      ['perPage', params?.perPage],
+    ]);
+    const payload = await this.request<unknown>(`/api/v1/search?${query}`, {
+      method: 'GET',
+    });
     const mapped = mapPaginatedEnvelope(payload, mapProductListItem);
     return { items: mapped.data, meta: mapped.meta };
   }
