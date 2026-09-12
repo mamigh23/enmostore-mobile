@@ -108,7 +108,9 @@ jobs:
 
       - name: Build iOS simulator app
         working-directory: ios
+        shell: bash
         run: |
+          set +e
           xcodebuild \
             -workspace EnmoStoreMobile.xcworkspace \
             -scheme EnmoStoreMobile \
@@ -116,7 +118,30 @@ jobs:
             -sdk iphonesimulator \
             -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO \
-            build
+            build > xcodebuild.log 2>&1
+          status=$?
+          set -e
+
+          if [ "$status" -ne 0 ]; then
+            echo '::group::Actionable Xcode diagnostics'
+            grep -nEi '(^|[[:space:]])(error:|fatal error:)|BUILD FAILED|The following build commands failed|Command .* failed' xcodebuild.log | tail -n 160 || true
+            echo '::endgroup::'
+            echo '::group::Xcode log tail'
+            tail -n 220 xcodebuild.log || true
+            echo '::endgroup::'
+            exit "$status"
+          fi
+
+          tail -n 40 xcodebuild.log || true
+
+      - name: Upload failed iOS build log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-xcodebuild-log
+          path: ios/xcodebuild.log
+          if-no-files-found: warn
+          retention-days: 3
 
   repository-safety:
     name: Repository safety checks
