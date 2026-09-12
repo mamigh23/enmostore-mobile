@@ -1,0 +1,82 @@
+name: Phase 2 CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [work]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase2-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  javascript-quality:
+    name: Typecheck, lint, test, format
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.19.4'
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test -- --runInBand
+
+      - name: Formatting
+        run: npm run format:check
+
+  repository-safety:
+    name: Repository safety checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Reject common secret/signing artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          if find . -type f \( -name '*.jks' -o -name '*.keystore' -o -name '*.p12' -o -name '*.mobileprovision' -o -name '*.pem' \) -not -path './.git/*' | grep -q .; then
+            echo 'Signing/private key material must not be committed.'
+            exit 1
+          fi
+
+      - name: Reject direct database usage in mobile source
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RniE '\b(mysqli|mysql_query|PDO)\b' src android ios --exclude-dir=Pods --exclude-dir=build 2>/dev/null; then
+            echo 'Direct database access is forbidden in the mobile application.'
+            exit 1
+          fi
+
+      - name: Reject WebView wrapper implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RniE 'react-native-webview|<WebView|android\.webkit\.WebView|WKWebView' src android ios --exclude-dir=Pods --exclude-dir=build 2>/dev/null; then
+            echo 'EnmoStore Mobile must not be implemented as a WebView wrapper.'
+            exit 1
+          fi
