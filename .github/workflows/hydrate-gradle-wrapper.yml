@@ -1,0 +1,32 @@
+name: Hydrate Gradle wrapper
+
+on:
+  push:
+    branches: [phase2-hardening]
+
+permissions:
+  contents: write
+
+jobs:
+  hydrate:
+    if: ${{ !contains(github.event.head_commit.message, '[wrapper-hydrated]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase2-hardening
+      - name: Add verified Gradle wrapper jar when missing
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f android/gradle/wrapper/gradle-wrapper.jar ]; then
+            echo "wrapper jar already present"
+            exit 0
+          fi
+          curl -fsSL "https://raw.githubusercontent.com/react-native-community/template/0.81-stable/template/android/gradle/wrapper/gradle-wrapper.jar" -o android/gradle/wrapper/gradle-wrapper.jar
+          test "$(git hash-object android/gradle/wrapper/gradle-wrapper.jar)" = "1b33c55baabb587c669f562ae36f953de2481846"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add android/gradle/wrapper/gradle-wrapper.jar
+          git commit -m "chore: add verified Gradle wrapper jar [wrapper-hydrated]"
+          git push origin HEAD:phase2-hardening
