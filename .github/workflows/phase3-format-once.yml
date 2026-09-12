@@ -1,0 +1,46 @@
+name: Phase 3 Format Once
+
+on:
+  push:
+    branches:
+      - work
+    paths:
+      - '.github/workflows/phase3-format-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: work
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20.19.4
+      - run: npm install --no-audit --no-fund
+      - name: Format Phase 3 files
+        run: npx prettier --write __tests__/phase3-repositories.test.ts ARCHITECTURE.md src/core/network/validation.ts src/features/bootstrap/BootstrapRepository.ts src/features/catalog/catalogMappers.ts
+      - name: Remove lint warning
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('src/features/bootstrap/BootstrapRepository.ts')
+          s=p.read_text()
+          s=s.replace("supportedLocales: asStringArray(record.supportedLocales).map(value => {\n      if (!SUPPORTED_LOCALES.includes(value as SupportedLocale)) {\n        return invalidResponse();\n      }\n      return value as SupportedLocale;\n    }),", "supportedLocales: asStringArray(record.supportedLocales).map(locale => {\n      if (!SUPPORTED_LOCALES.includes(locale as SupportedLocale)) {\n        return invalidResponse();\n      }\n      return locale as SupportedLocale;\n    }),")
+          p.write_text(s)
+          PY
+          npx prettier --write src/features/bootstrap/BootstrapRepository.ts
+      - name: Commit formatted files
+        run: |
+          if git diff --quiet; then
+            echo "No formatting changes needed"
+            exit 0
+          fi
+          git config user.name "Muhammed"
+          git config user.email "155327577+mamigh23@users.noreply.github.com"
+          git add __tests__/phase3-repositories.test.ts ARCHITECTURE.md src/core/network/validation.ts src/features/bootstrap/BootstrapRepository.ts src/features/catalog/catalogMappers.ts
+          git commit -m "style: format Phase 3 catalog foundation"
+          git push origin HEAD:work
