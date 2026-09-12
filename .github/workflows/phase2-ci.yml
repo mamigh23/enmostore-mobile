@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   javascript-quality:
-    name: Typecheck, lint, test, format audit
+    name: Typecheck, lint, test, format
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -40,8 +40,7 @@ jobs:
       - name: Unit tests
         run: npm test -- --runInBand
 
-      - name: Formatting baseline audit
-        continue-on-error: true
+      - name: Formatting check
         run: npm run format:check
 
   android-build:
