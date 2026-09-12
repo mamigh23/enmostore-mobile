@@ -1,40 +1,45 @@
 # PROJECT STATUS
 
 **Project:** EnmoStore Mobile  
-**Status:** Phase 1 — Backend Discovery / API Foundation  
-**Last Updated:** 2026-09-11
+**Status:** Phase 2 — Mobile Foundation Hardening  
+**Last Updated:** 2026-09-12
 
 ## Completed
 - [x] GitHub repository/documentation foundation
-- [x] Existing PHP/MySQL backend source inspected
-- [x] SQL database export inspected
-- [x] Core database schema verified
-- [x] Session auth identified
-- [x] Product/category/order/favorites/coupon/preorder domains verified
-- [x] TR/EN/DE/JA localization confirmed
-- [x] TRY/EUR product fields confirmed
-- [x] Shared `orders` + `order_items` model confirmed for web/mobile
-- [x] Favorites unique user/product relationship confirmed
-- [x] Existing database cart table identified
-- [x] PayTR iframe/token/callback integration confirmed
-- [x] Backend/schema audit documented in `BACKEND_AUDIT.md`
+- [x] Existing PHP/MySQL backend and SQL schema audited
+- [x] React Native 0.81.4 + TypeScript selected for Android/iOS
+- [x] Six-tab mobile shell created: Home, Explore, Search, Favorites, Cart, Account
+- [x] TR / EN / DE / JA localization foundation created
+- [x] Environment-aware API configuration created
+- [x] Central JSON API client created with timeout, bearer-token support and normalized API errors
+- [x] Access-token storage uses `react-native-keychain`
+- [x] HTTP 401 handling preserves the authoritative API error even if secure-token cleanup fails
+- [x] API-client regression tests added
+- [x] GitHub Actions Phase 2 CI added
+- [x] CI confirms npm dependency installation, TypeScript, ESLint and unit tests pass
+- [x] CI safety checks confirm no committed signing/private-key material, direct DB access or WebView wrapper implementation
 
 ## In Progress
-- [ ] Lock mobile-safe PHP JSON API contract
-- [ ] Decide mobile technology stack
+- [ ] Complete and validate Android native project/wrapper scaffolding against the React Native 0.81 template
+- [ ] Complete and validate iOS Xcode project/scheme scaffolding against the React Native 0.81 template
+- [ ] Run a real Android debug build in CI
+- [ ] Run a real iOS build on a macOS runner
+- [ ] Normalize the existing Prettier formatting baseline (currently audited but non-blocking)
+- [ ] Lock the mobile-safe PHP JSON API contract
 - [ ] Define token-based auth + Google identity linking migration
 - [ ] Define API cart persistence strategy
 - [ ] Define push notification architecture/device-token migration
 - [ ] Verify exact shipping rules
 - [ ] Verify PayTR EUR merchant/account support
 
-## Critical Findings
-- PayTR `merchant_oid` initialization/callback parsing formats are inconsistent and must be standardized/tested.
-- Reviewed PayTR initialization sends `TL` unconditionally; international EUR checkout needs verified backend mapping/account support.
+## Critical Findings / Release Blockers
+- PayTR `merchant_oid` initialization/callback parsing formats are inconsistent and must be standardized/tested before checkout release.
+- Reviewed PayTR initialization sends `TL` unconditionally; international EUR checkout still requires verified backend mapping/account support.
 - SQL export contains PayTR setting values and application/customer data. It must never be committed to the mobile repository.
-- `products` has TRY/EUR price fields and aggregate stock, but no per-size/per-color inventory table. Codex must not invent variant inventory without an explicit migration.
+- `products` has TRY/EUR price fields and aggregate stock, but no per-size/per-color inventory table. Do not invent variant inventory without an explicit migration.
 - `users` has no Google provider identity columns/table. Google sign-in requires a deliberate server-side identity-linking design/migration.
 - Mobile and web orders will use the same `orders` / `order_items` records.
+- Phase 2 is **NOT READY FOR MERGE** until native Android/iOS project validation is complete.
 
 ## Confirmed Product Decisions
 - Android + iOS dedicated app; no WebView-only implementation
@@ -47,15 +52,23 @@
 - Payment: PayTR
 - Mobile never connects directly to MySQL
 
+## Current CI Baseline
+- npm install: PASS
+- TypeScript: PASS
+- ESLint: PASS
+- Jest: PASS — 3 suites / 8 tests
+- Repository safety checks: PASS
+- Prettier: baseline debt detected in existing files; audit is currently non-blocking
+- Android assembleDebug: NOT YET RUN
+- iOS Xcode build: NOT YET RUN
+
 ## Next Execution Batch
-1. Record mobile framework decision.
-2. Define secure API response/error/auth conventions.
-3. Create reviewed DB migrations only for missing mobile capabilities (external identities/device tokens and any chosen persistent cart additions).
-4. Implement PHP `/api/v1` foundation without breaking website routes.
-5. Fix PayTR merchant OID handling and test callback parsing.
-6. Verify/map TRY/EUR PayTR behavior.
-7. Initialize mobile project and design/navigation shell.
-8. Implement auth/catalog/favorites/cart/checkout/orders/account/notifications phase-by-phase.
+1. Have Codex complete the missing native Android/iOS project scaffolding only; no Phase 3 features.
+2. Review those changes before they reach `work`.
+3. Add Android debug-build CI and resolve native build failures.
+4. Add macOS/iOS build validation when the Xcode project is complete.
+5. Normalize Prettier baseline and make formatting blocking.
+6. Only after Phase 2 is green, proceed to backend API/auth/catalog implementation.
 
 ## Current Phase
-**Phase 1 — Backend Discovery / API Foundation**
+**Phase 2 — Mobile Foundation Hardening**
