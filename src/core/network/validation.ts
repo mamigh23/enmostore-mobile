@@ -92,16 +92,21 @@ export function mapPaginatedEnvelope<T>(
   };
 }
 
+export function buildQueryString(
+  entries: ReadonlyArray<readonly [string, string | number | undefined]>,
+): string {
+  return entries
+    .filter((entry): entry is readonly [string, string | number] => entry[1] !== undefined)
+    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
+    .join('&');
+}
+
 export function buildPaginationQuery(params?: {
   page?: number;
   perPage?: number;
-}): URLSearchParams {
-  const query = new URLSearchParams();
-  if (params?.page !== undefined) {
-    query.set('page', String(params.page));
-  }
-  if (params?.perPage !== undefined) {
-    query.set('perPage', String(params.perPage));
-  }
-  return query;
+}): string {
+  return buildQueryString([
+    ['page', params?.page],
+    ['perPage', params?.perPage],
+  ]);
 }
