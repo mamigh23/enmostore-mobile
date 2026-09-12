@@ -20,9 +20,12 @@ function mapBootstrap(value: unknown): Bootstrap {
   if (!Array.isArray(record.supportedLocales)) {
     return invalidResponse();
   }
-  const supportedLocales = record.supportedLocales.map(value => {
+  const supportedLocales = record.supportedLocales.map((value) => {
     const locale = asString(value);
-    return locale === 'tr' || locale === 'en' || locale === 'de' || locale === 'ja'
+    return locale === 'tr' ||
+      locale === 'en' ||
+      locale === 'de' ||
+      locale === 'ja'
       ? locale
       : invalidResponse();
   });

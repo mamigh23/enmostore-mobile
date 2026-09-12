@@ -96,8 +96,14 @@ export function buildQueryString(
   entries: ReadonlyArray<readonly [string, string | number | undefined]>,
 ): string {
   return entries
-    .filter((entry): entry is readonly [string, string | number] => entry[1] !== undefined)
-    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
+    .filter(
+      (entry): entry is readonly [string, string | number] =>
+        entry[1] !== undefined,
+    )
+    .map(
+      ([key, value]) =>
+        `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`,
+    )
     .join('&');
 }
 

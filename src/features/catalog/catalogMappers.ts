@@ -49,7 +49,8 @@ export function mapProductDetail(value: unknown): ProductDetail {
 
 export function mapCategory(value: unknown): Category {
   const record = asRecord(value);
-  const parentId = record.parentId === null ? null : asPositiveId(record.parentId);
+  const parentId =
+    record.parentId === null ? null : asPositiveId(record.parentId);
   return {
     id: asPositiveId(record.id),
     name: asString(record.name),

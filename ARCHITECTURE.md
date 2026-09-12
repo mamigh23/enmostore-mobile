@@ -24,15 +24,19 @@ The mobile app never connects directly to MySQL and never receives database, Pay
 ## Mobile application layers
 
 ### UI / Feature layer
+
 Screens and user interaction. Feature code must not call `fetch` directly or know database/schema details.
 
 ### Domain layer
+
 Stable app-facing types and business concepts such as session, product, category, money and pagination.
 
 ### Data / Repository layer
+
 Feature repositories translate API contracts into domain types. Network behavior remains centralized through `ApiClient`.
 
 ### Core layer
+
 Shared networking, localization, secure storage, environment configuration and cross-cutting infrastructure.
 
 ## API rules
@@ -52,6 +56,7 @@ The first Phase 3 read path is:
 `Screen → Repository → ApiClient → /api/v1/... → PHP backend → MySQL`
 
 Initial contract families:
+
 - bootstrap
 - products
 - categories
@@ -62,6 +67,7 @@ Do not invent variant-level inventory. The audited database currently has aggreg
 ## Authentication architecture
 
 Planned mobile auth flow:
+
 1. app submits supported credentials or a Google identity token to the PHP JSON API
 2. backend verifies identity using existing user records/provider verification
 3. backend issues its own revocable mobile access token/session
@@ -81,6 +87,7 @@ Shared orders must continue using the existing `orders` / `order_items` records.
 PayTR remains server-only. The app must never contain merchant key/salt or decide that a payment succeeded. PayTR callback/backend order state is authoritative.
 
 Known release blockers remain:
+
 - `merchant_oid` generation/callback parsing mismatch in the reviewed backend
 - reviewed initialization hardcodes `TL`; EUR behavior requires verified implementation/account support
 
@@ -96,6 +103,7 @@ Known release blockers remain:
 ## CI architecture
 
 Phase 2 established blocking validation for:
+
 - TypeScript
 - ESLint
 - Jest
