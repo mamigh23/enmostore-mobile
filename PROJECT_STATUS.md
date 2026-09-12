@@ -1,7 +1,7 @@
 # PROJECT STATUS
 
 **Project:** EnmoStore Mobile  
-**Status:** Phase 2 — Mobile Foundation Hardening  
+**Status:** Phase 2 — Final Merge Validation  
 **Last Updated:** 2026-09-12
 
 ## Completed
@@ -15,17 +15,22 @@
 - [x] Access-token storage uses `react-native-keychain`
 - [x] HTTP 401 handling preserves the authoritative API error even if secure-token cleanup fails
 - [x] API-client regression tests added
-- [x] GitHub Actions Phase 2 CI added
+- [x] Android native project/wrapper scaffolding completed and validated
+- [x] Android `assembleDebug` passes on GitHub Actions
+- [x] iOS Xcode project/shared scheme scaffolding completed and validated
+- [x] CocoaPods installation passes on GitHub Actions
+- [x] iOS simulator build passes on `macos-15` with Xcode 16.4
+- [x] iOS `AppDelegate.swift` restored to valid React Native Swift conditional-compilation syntax
+- [x] GitHub Actions Phase 2 CI validates JavaScript quality, Android, iOS and repository safety
 - [x] CI confirms npm dependency installation, TypeScript, ESLint and unit tests pass
 - [x] CI safety checks confirm no committed signing/private-key material, direct DB access or WebView wrapper implementation
+- [x] Prettier baseline is clean on CI and formatting has been promoted to a blocking gate
 
 ## In Progress
-- [ ] Complete and validate Android native project/wrapper scaffolding against the React Native 0.81 template
-- [ ] Complete and validate iOS Xcode project/scheme scaffolding against the React Native 0.81 template
-- [ ] Run a real Android debug build in CI
-- [ ] Run a real iOS build on a macOS runner
-- [ ] Normalize the existing Prettier formatting baseline (currently audited but non-blocking)
-- [ ] Lock the mobile-safe PHP JSON API contract
+- [ ] Run final CI on the current `work` head after promoting formatting to a blocking gate and refreshing status documentation
+- [ ] Perform final PR diff/mergeability review
+- [ ] Merge Phase 2 only after the current head is fully green
+- [ ] Lock the mobile-safe PHP JSON API contract for Phase 3
 - [ ] Define token-based auth + Google identity linking migration
 - [ ] Define API cart persistence strategy
 - [ ] Define push notification architecture/device-token migration
@@ -39,7 +44,7 @@
 - `products` has TRY/EUR price fields and aggregate stock, but no per-size/per-color inventory table. Do not invent variant inventory without an explicit migration.
 - `users` has no Google provider identity columns/table. Google sign-in requires a deliberate server-side identity-linking design/migration.
 - Mobile and web orders will use the same `orders` / `order_items` records.
-- Phase 2 is **NOT READY FOR MERGE** until native Android/iOS project validation is complete.
+- These backend/payment findings are release blockers for later product phases; they do not invalidate the now-green Phase 2 native foundation.
 
 ## Confirmed Product Decisions
 - Android + iOS dedicated app; no WebView-only implementation
@@ -52,23 +57,28 @@
 - Payment: PayTR
 - Mobile never connects directly to MySQL
 
-## Current CI Baseline
+## Latest Proven CI Baseline
+Validated on GitHub Actions before the final formatting-gate promotion:
 - npm install: PASS
 - TypeScript: PASS
 - ESLint: PASS
 - Jest: PASS — 3 suites / 8 tests
+- Prettier formatting check: PASS
 - Repository safety checks: PASS
-- Prettier: baseline debt detected in existing files; audit is currently non-blocking
-- Android assembleDebug: NOT YET RUN
-- iOS Xcode build: NOT YET RUN
+- Android `assembleDebug`: PASS
+- iOS project/plist/scheme validation: PASS
+- CocoaPods install: PASS
+- iOS simulator build: PASS on `macos-15` / Xcode 16.4
+
+The current head must repeat these checks successfully before merge.
 
 ## Next Execution Batch
-1. Have Codex complete the missing native Android/iOS project scaffolding only; no Phase 3 features.
-2. Review those changes before they reach `work`.
-3. Add Android debug-build CI and resolve native build failures.
-4. Add macOS/iOS build validation when the Xcode project is complete.
-5. Normalize Prettier baseline and make formatting blocking.
-6. Only after Phase 2 is green, proceed to backend API/auth/catalog implementation.
+1. Let the final Phase 2 CI run complete on the current `work` head with formatting blocking.
+2. If any job fails, diagnose the exact log and fix only the proven issue.
+3. Re-check PR #1 diff, mergeability and scope.
+4. Mark Phase 2 READY FOR MERGE only when all current-head checks are green.
+5. Merge Phase 2 before beginning Phase 3 product/backend implementation.
+6. Start Phase 3 with the mobile-safe PHP JSON API/auth/catalog foundation; do not bypass the documented PayTR and schema blockers.
 
 ## Current Phase
-**Phase 2 — Mobile Foundation Hardening**
+**Phase 2 — Final Merge Validation**
