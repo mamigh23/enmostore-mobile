@@ -1,0 +1,179 @@
+name: Phase 2 CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [work]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phase2-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  javascript-quality:
+    name: Typecheck, lint, test, format
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20.19.4'
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test -- --runInBand
+
+      - name: Formatting check
+        run: npm run format:check
+
+  android-build:
+    name: Android assembleDebug
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20.19.4'
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Verify Gradle wrapper
+        run: |
+          test -x android/gradlew
+          test -f android/gradle/wrapper/gradle-wrapper.jar
+          test -f android/gradle/wrapper/gradle-wrapper.properties
+
+      - name: Assemble debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+
+  ios-build:
+    name: iOS simulator build
+    runs-on: macos-15
+    timeout-minutes: 35
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20.19.4'
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Validate iOS project files
+        run: |
+          plutil -lint ios/EnmoStore/Info.plist
+          plutil -lint ios/EnmoStore/PrivacyInfo.xcprivacy
+          plutil -lint ios/EnmoStoreMobile.xcodeproj/project.pbxproj
+          test -f ios/EnmoStoreMobile.xcodeproj/xcshareddata/xcschemes/EnmoStoreMobile.xcscheme
+          test -f ios/EnmoStore/LaunchScreen.storyboard
+
+      - name: Install CocoaPods dependencies
+        working-directory: ios
+        run: pod install
+
+      - name: Build iOS simulator app
+        working-directory: ios
+        shell: bash
+        run: |
+          set +e
+          xcodebuild \
+            -workspace EnmoStoreMobile.xcworkspace \
+            -scheme EnmoStoreMobile \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            build > xcodebuild.log 2>&1
+          status=$?
+          set -e
+
+          if [ "$status" -ne 0 ]; then
+            echo '::group::Actionable Xcode diagnostics'
+            grep -nEi '(^|[[:space:]])(error:|fatal error:)|BUILD FAILED|The following build commands failed|Command .* failed' xcodebuild.log | tail -n 160 || true
+            echo '::endgroup::'
+            echo '::group::Xcode log tail'
+            tail -n 220 xcodebuild.log || true
+            echo '::endgroup::'
+            exit "$status"
+          fi
+
+          tail -n 40 xcodebuild.log || true
+
+      - name: Upload failed iOS build log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-xcodebuild-log
+          path: ios/xcodebuild.log
+          if-no-files-found: warn
+          retention-days: 3
+
+  repository-safety:
+    name: Repository safety checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Reject common secret/signing artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          if find . -type f \( -name '*.jks' -o -name '*.keystore' -o -name '*.p12' -o -name '*.mobileprovision' -o -name '*.pem' \) -not -path './.git/*' | grep -q .; then
+            echo 'Signing/private key material must not be committed.'
+            exit 1
+          fi
+
+      - name: Reject direct database usage in mobile source
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RniE '\b(mysqli|mysql_query|PDO)\b' src android ios --exclude-dir=Pods --exclude-dir=build 2>/dev/null; then
+            echo 'Direct database access is forbidden in the mobile application.'
+            exit 1
+          fi
+
+      - name: Reject WebView wrapper implementation
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RniE 'react-native-webview|<WebView|android\.webkit\.WebView|WKWebView' src android ios --exclude-dir=Pods --exclude-dir=build 2>/dev/null; then
+            echo 'EnmoStore Mobile must not be implemented as a WebView wrapper.'
+            exit 1
+          fi
