@@ -79,7 +79,7 @@ jobs:
 
   ios-build:
     name: iOS simulator build
-    runs-on: macos-latest
+    runs-on: macos-15
     timeout-minutes: 35
 
     steps:
