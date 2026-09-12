@@ -21,7 +21,7 @@ export class ProductRepository {
   constructor(private readonly request: ApiRequester = apiRequest) {}
 
   async getProducts(params?: PaginationParams): Promise<ProductPage> {
-    const query = buildPaginationQuery(params).toString();
+    const query = buildPaginationQuery(params);
     const path = query ? `/api/v1/products?${query}` : '/api/v1/products';
     const payload = await this.request<unknown>(path, { method: 'GET' });
     const mapped = mapPaginatedEnvelope(payload, mapProductListItem);
