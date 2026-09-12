@@ -1,5 +1,5 @@
-import React, {createContext, useContext, useMemo, useState} from 'react';
-import {Locale, translations} from './translations';
+import React, { createContext, useContext, useMemo, useState } from 'react';
+import { Locale, translations } from './translations';
 
 type TranslationKey = keyof typeof translations.en;
 type ContextValue = {
@@ -10,19 +10,22 @@ type ContextValue = {
 
 const LocaleContext = createContext<ContextValue | null>(null);
 
-export function LocaleProvider({children}: {children: React.ReactNode}) {
+export function LocaleProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocale] = useState<Locale>('tr');
 
   const value = useMemo<ContextValue>(
     () => ({
       locale,
       setLocale,
-      t: (key: TranslationKey) => translations[locale]?.[key] ?? translations.en[key] ?? key,
+      t: (key: TranslationKey) =>
+        translations[locale]?.[key] ?? translations.en[key] ?? key,
     }),
     [locale],
   );
 
-  return <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>;
+  return (
+    <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>
+  );
 }
 
 export function useLocale() {

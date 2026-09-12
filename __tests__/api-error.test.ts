@@ -1,4 +1,4 @@
-import {mapHttpStatusToCode} from '../src/core/network/ApiError';
+import { mapHttpStatusToCode } from '../src/core/network/ApiError';
 
 describe('mapHttpStatusToCode', () => {
   test.each([
